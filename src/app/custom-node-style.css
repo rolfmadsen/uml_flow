@@ -1,0 +1,54 @@
+/* custom-node-style.css */
+
+.uml-class-node {
+  background-color: #fff;
+  border: 1px solid black;
+  border-radius: 5px;
+  width: 200px;
+  padding: 10px;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1); /* Soft shadow for a modern look */
+}
+
+.uml-class-header {
+  background-color: #f0f0f0;
+  padding: 5px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.uml-class-section {
+  margin-top: 5px;
+}
+
+.uml-class-field {
+  padding: 5px;
+}
+
+.uml-class-field input {
+  border: none;
+  width: 100%;
+  padding: 2px;
+  background-color: #f9f9f9; /* Light background for form fields */
+}
+
+/* Highlight selected section */
+.selected {
+  border: 2px solid #007bff; /* Blue border to indicate selection */
+}
+
+.edge-label {
+  background: white;
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.15); /* Adds readability and a modern look */
+}
+
+/* Prevent dragging and allow pointer interactions */
+.nodrag {
+  touch-action: none;
+}
+
+.nopan {
+  pointer-events: all;
+}
