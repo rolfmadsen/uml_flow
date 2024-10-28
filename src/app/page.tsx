@@ -18,15 +18,22 @@ import 'reactflow/dist/style.css';
 import AddNodeButton from './AddNodeButton';
 import nodeTypes from './nodeTypes';
 import edgeTypes from './edgeTypes';
+import { NodeDataUpdate } from './CustomUMLNode';
 
 let classCounter = 1;
 
 interface CustomEdgeData {
-  label: string;
-  relationshipType: string;
-  edgeIndex: number;
-  totalEdges: number;
+  label?: string;
+  relationshipType?: string;
+  edgeIndex?: number;
+  totalEdges?: number;
+  // Functions are excluded from serialization
+  updateEdgeLabel?: (edgeId: string, newLabel: string) => void;
+  updateRelationshipType?: (edgeId: string, newType: string) => void;
+  setSelectedEdge?: (edgeId: string | null) => void;
 }
+
+type CustomEdge = Edge<CustomEdgeData>;
 
 interface CustomNodeData {
   id: string;
@@ -34,29 +41,17 @@ interface CustomNodeData {
   attributes: string[];
   methods: string[];
   selectedSection: number | null;
+  // Functions are excluded from serialization
+  onSelectSection?: (nodeId: string, sectionIndex: number) => void;
+  onDeleteClass?: (nodeId: string) => void;
+  onUpdateNodeData?: (nodeId: string, updatedData: NodeDataUpdate) => void;
 }
 
-type CustomEdge = Edge<
-  CustomEdgeData & {
-    // Functions are excluded from serialization
-    updateEdgeLabel?: (edgeId: string, newLabel: string) => void;
-    updateRelationshipType?: (edgeId: string, newType: string) => void;
-    setSelectedEdge?: (edgeId: string | null) => void;
-  }
->;
-
-type CustomNode = Node<
-  CustomNodeData & {
-    // Functions are excluded from serialization
-    onSelectSection?: (nodeId: string, sectionIndex: number) => void;
-    onDeleteClass?: (nodeId: string) => void;
-    onUpdateNodeData?: (nodeId: string, updatedData: any) => void;
-  }
->;
+type CustomNode = Node<CustomNodeData>;
 
 function FlowCanvas() {
-  const [nodes, setNodes, onNodesChange] = useNodesState<CustomNode[]>([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<CustomEdge[]>([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<CustomNodeData>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<CustomEdgeData>([]);
   const { project } = useReactFlow();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState<string | null>(null);
@@ -71,36 +66,40 @@ function FlowCanvas() {
   const updateEdgeLabel = useCallback(
     (edgeId: string, newLabel: string) => {
       setEdges((eds) =>
-        eds.map((edge) =>
-          edge.id === edgeId
-            ? {
-                ...edge,
-                data: {
-                  ...edge.data,
-                  label: newLabel,
-                },
-              }
-            : edge
-        )
+        eds.map((edge) => {
+          if (edge.id === edgeId) {
+            const data: CustomEdgeData = {
+              ...edge.data,
+              label: newLabel,
+            };
+            return {
+              ...edge,
+              data,
+            };
+          }
+          return edge;
+        })
       );
     },
     [setEdges]
-  );
+  );  
 
   const updateRelationshipType = useCallback(
     (edgeId: string, newType: string) => {
       setEdges((eds) =>
-        eds.map((edge) =>
-          edge.id === edgeId
-            ? {
-                ...edge,
-                data: {
-                  ...edge.data,
-                  relationshipType: newType,
-                },
-              }
-            : edge
-        )
+        eds.map((edge) => {
+          if (edge.id === edgeId) {
+            const data: CustomEdgeData = {
+              ...edge.data,
+              relationshipType: newType,
+            };
+            return {
+              ...edge,
+              data,
+            };
+          }
+          return edge;
+        })
       );
     },
     [setEdges]
@@ -134,7 +133,7 @@ function FlowCanvas() {
   );
 
   const handleUpdateNodeData = useCallback(
-    (nodeId: string, updatedData: any) => {
+    (nodeId: string, updatedData: NodeDataUpdate) => {
       setNodes((prevNodes) =>
         prevNodes.map((node) =>
           node.id === nodeId ? { ...node, data: { ...node.data, ...updatedData } } : node
@@ -206,12 +205,15 @@ function FlowCanvas() {
           const loadedEdges: CustomEdge[] = parsedFlow.edges.map((edge: CustomEdge) => ({
             ...edge,
             data: {
-              ...edge.data,
+              label: edge.data?.label || 'Association',
+              relationshipType: edge.data?.relationshipType || 'association',
+              edgeIndex: edge.data?.edgeIndex || 0,
+              totalEdges: edge.data?.totalEdges || 1,
               updateEdgeLabel,
               updateRelationshipType,
               setSelectedEdge: setSelectedEdgeId,
             },
-          }));
+          }));          
 
           setNodes(loadedNodes);
           setEdges(loadedEdges);
@@ -257,6 +259,8 @@ function FlowCanvas() {
     updateEdgeLabel,
     updateRelationshipType,
     setSelectedEdgeId,
+    setEdges,
+    setNodes,
   ]);
 
   // Save diagram whenever nodes or edges change, after initialization
@@ -264,8 +268,8 @@ function FlowCanvas() {
     if (isInitialized) {
       saveDiagram();
     }
-  }, [nodes, edges, saveDiagram, isInitialized]);
-
+  }, [nodes, edges, saveDiagram, isInitialized, setEdges, setNodes]);
+  
   // Clear diagram function
   const clearDiagram = useCallback(() => {
     localStorage.removeItem('diagram-flow');
@@ -300,11 +304,21 @@ function FlowCanvas() {
 
   const onConnect = useCallback(
     (params: Connection) => {
+      // Ensure both source and target are non-null before proceeding
+      if (!params.source || !params.target) {
+        return; // Exit early if either source or target is null
+      }
+  
+      // Create strictly-typed non-null versions of source and target
+      const source = params.source as string;
+      const target = params.target as string;
+  
       setEdges((eds) => {
         const newEdge: CustomEdge = {
-          ...params,
-          id: `edge-${params.source}-${params.sourceHandle}-${params.target}-${params.targetHandle}-${Date.now()}`,
+          id: `edge-${source}-${params.sourceHandle}-${target}-${params.targetHandle}-${Date.now()}`,
           type: 'customEdge',
+          source,  // Strictly string now
+          target,  // Strictly string now
           data: {
             label: 'Association',
             relationshipType: 'association',
@@ -315,12 +329,12 @@ function FlowCanvas() {
             setSelectedEdge: setSelectedEdgeId,
           },
         };
-
+  
         const newEdges = addEdge(newEdge, eds);
-
+  
         // Update edge indices for edges between the same nodes
-        updateEdgeIndicesBetweenNodes(params.source as string, params.target as string);
-
+        updateEdgeIndicesBetweenNodes(source, target);
+  
         return newEdges;
       });
     },
@@ -331,7 +345,7 @@ function FlowCanvas() {
       setSelectedEdgeId,
       updateEdgeIndicesBetweenNodes,
     ]
-  );
+  );    
 
   const handleAddNode = useCallback(() => {
     if (!reactFlowWrapper.current) return;
@@ -388,9 +402,7 @@ function FlowCanvas() {
           if (currentNodeIndex !== -1) {
             const currentNode = nodes[currentNodeIndex];
             const attributeCount = currentNode.data.attributes.length || 1;
-            const methodCount = currentNode.data.methods.length || 1;
-            const totalSections = 2 + attributeCount + methodCount;
-
+            
             if (selectedSectionIndex === 0 || selectedSectionIndex === 1) {
               handleDeleteClass(currentNode.id);
             } else {

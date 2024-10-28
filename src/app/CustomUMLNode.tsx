@@ -11,8 +11,14 @@ interface CustomNodeData {
   methods: string[];
   onSelectSection: (nodeId: string, sectionIndex: number) => void;
   onDeleteClass: (nodeId: string) => void;
-  onUpdateNodeData: (nodeId: string, updatedData: any) => void;
+  onUpdateNodeData: (nodeId: string, updatedData: NodeDataUpdate) => void;
   selectedSection: number | null;
+}
+
+export interface NodeDataUpdate {
+  className?: string;
+  attributes?: string[];
+  methods?: string[];
 }
 
 const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) => {

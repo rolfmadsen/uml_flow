@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import {
   EdgeProps,
-  SmoothStepEdge,
+  //SmoothStepEdge,
   getSmoothStepPath,
   EdgeLabelRenderer,
 } from 'reactflow';
@@ -77,17 +77,16 @@ const CustomEdge = (props: EdgeProps) => {
     setIsEditing(true);
   };
 
-  const handleLabelBlur = (e: React.FocusEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
+  const handleLabelBlur = (newValue: string) => {
     if (data?.updateEdgeLabel) {
       data.updateEdgeLabel(id, newValue);
     }
     setIsEditing(false);
   };
-
+  
   const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
-      handleLabelBlur(e as any);
+      handleLabelBlur(e.currentTarget.value);
     }
   };
 
@@ -180,7 +179,7 @@ const CustomEdge = (props: EdgeProps) => {
             <input
               type="text"
               defaultValue={label}
-              onBlur={handleLabelBlur}
+              onBlur={(e) => handleLabelBlur(e.currentTarget.value)}
               onKeyDown={handleLabelKeyDown}
               autoFocus
               style={{
