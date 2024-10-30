@@ -1,5 +1,7 @@
 // src/app/CustomUMLNode.tsx
 
+'use client';
+
 import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
 import './custom-node-style.css';

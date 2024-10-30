@@ -82,9 +82,9 @@ function FlowCanvas() {
       );
     },
     [setEdges]
-  );  
+);
 
-  const updateRelationshipType = useCallback(
+const updateRelationshipType = useCallback(
     (edgeId: string, newType: string) => {
       setEdges((eds) =>
         eds.map((edge) => {
@@ -103,7 +103,7 @@ function FlowCanvas() {
       );
     },
     [setEdges]
-  );
+);
 
   const handleSelectSection = useCallback(
     (nodeId: string, section: number) => {
@@ -157,7 +157,6 @@ function FlowCanvas() {
       ...node,
       data: {
         ...node.data,
-        // Exclude functions from data
         onSelectSection: undefined,
         onDeleteClass: undefined,
         onUpdateNodeData: undefined,
@@ -168,7 +167,6 @@ function FlowCanvas() {
       ...edge,
       data: {
         ...edge.data,
-        // Exclude functions from data
         updateEdgeLabel: undefined,
         updateRelationshipType: undefined,
         setSelectedEdge: undefined,
@@ -180,7 +178,7 @@ function FlowCanvas() {
       edges: edgesToSave,
     };
     localStorage.setItem('diagram-flow', JSON.stringify(flow));
-  }, [nodes, edges]);
+}, [nodes, edges]); // Only nodes and edges should be dependencies
 
   // Load diagram from localStorage and reassign functions
   useEffect(() => {
@@ -266,9 +264,9 @@ function FlowCanvas() {
   // Save diagram whenever nodes or edges change, after initialization
   useEffect(() => {
     if (isInitialized) {
-      saveDiagram();
+        saveDiagram();
     }
-  }, [nodes, edges, saveDiagram, isInitialized, setEdges, setNodes]);
+  }, [isInitialized, nodes, edges, saveDiagram]);
   
   // Clear diagram function
   const clearDiagram = useCallback(() => {
@@ -280,72 +278,59 @@ function FlowCanvas() {
   // Function to update edge indices between two nodes
   const updateEdgeIndicesBetweenNodes = useCallback(
     (sourceId: string, targetId: string) => {
-      setEdges((prevEdges) => {
-        const updatedEdges = prevEdges.map((edge) => ({ ...edge })); // Create a shallow copy
-        const sameEdges = updatedEdges.filter(
-          (edge) =>
-            (edge.source === sourceId && edge.target === targetId) ||
-            (edge.source === targetId && edge.target === sourceId)
-        );
+        setEdges((prevEdges) => {
+            // Identify edges connecting the same nodes
+            const sameEdges = prevEdges.filter(
+                (edge) =>
+                    (edge.source === sourceId && edge.target === targetId) ||
+                    (edge.source === targetId && edge.target === sourceId)
+            );
 
-        sameEdges.forEach((edge, index) => {
-          edge.data = {
-            ...edge.data,
-            edgeIndex: index,
-            totalEdges: sameEdges.length,
-          };
+            return prevEdges.map((edge) => {
+                if (sameEdges.includes(edge)) {
+                    return {
+                        ...edge,
+                        data: {
+                            ...edge.data,
+                            edgeIndex: sameEdges.indexOf(edge), // Index within `sameEdges`
+                            totalEdges: sameEdges.length,
+                        },
+                    };
+                }
+                return edge;
+            });
         });
-
-        return updatedEdges;
-      });
     },
     [setEdges]
-  );
+);
 
-  const onConnect = useCallback(
-    (params: Connection) => {
-      // Ensure both source and target are non-null before proceeding
-      if (!params.source || !params.target) {
-        return; // Exit early if either source or target is null
-      }
-  
-      // Create strictly-typed non-null versions of source and target
-      const source = params.source as string;
-      const target = params.target as string;
-  
-      setEdges((eds) => {
-        const newEdge: CustomEdge = {
-          id: `edge-${source}-${params.sourceHandle}-${target}-${params.targetHandle}-${Date.now()}`,
+const onConnect = useCallback(
+  (params: Connection) => {
+      if (!params.source || !params.target) return;
+
+      const newEdge: CustomEdge = {
+          id: `edge-${params.source}-${params.sourceHandle}-${params.target}-${params.targetHandle}-${Date.now()}`,
           type: 'customEdge',
-          source,  // Strictly string now
-          target,  // Strictly string now
+          source: params.source,
+          sourceHandle: params.sourceHandle, // Ensures handle ID is used
+          target: params.target,
+          targetHandle: params.targetHandle, // Ensures handle ID is used
           data: {
-            label: 'Association',
-            relationshipType: 'association',
-            edgeIndex: 0,
-            totalEdges: 1,
-            updateEdgeLabel,
-            updateRelationshipType,
-            setSelectedEdge: setSelectedEdgeId,
+              label: 'Association',
+              relationshipType: 'association',
+              edgeIndex: 0,
+              totalEdges: 1,
+              updateEdgeLabel,
+              updateRelationshipType,
+              setSelectedEdge: setSelectedEdgeId,
           },
-        };
-  
-        const newEdges = addEdge(newEdge, eds);
-  
-        // Update edge indices for edges between the same nodes
-        updateEdgeIndicesBetweenNodes(source, target);
-  
-        return newEdges;
-      });
-    },
-    [
-      setEdges,
-      updateEdgeLabel,
-      updateRelationshipType,
-      setSelectedEdgeId,
-      updateEdgeIndicesBetweenNodes,
-    ]
-  );    
+      };
+
+      setEdges((eds) => addEdge(newEdge, eds));
+      updateEdgeIndicesBetweenNodes(params.source, params.target);
+  },
+  [setEdges, updateEdgeLabel, updateRelationshipType, updateEdgeIndicesBetweenNodes, setSelectedEdgeId]
+); 
 
   const handleAddNode = useCallback(() => {
     if (!reactFlowWrapper.current) return;
@@ -385,17 +370,15 @@ function FlowCanvas() {
       if (event.key === 'Delete') {
         if (selectedEdgeId) {
           // Delete the selected edge
-          const edgeToDelete = edges.find((edge) => edge.id === selectedEdgeId);
-          if (edgeToDelete) {
-            setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdgeId));
-            setSelectedEdgeId(null);
-
-            // Update edge indices for edges between the same nodes
-            updateEdgeIndicesBetweenNodes(
-              edgeToDelete.source as string,
-              edgeToDelete.target as string
-            );
+          if (selectedEdgeId !== null) {
+            const edgeToDelete = edges.find((edge) => edge.id === selectedEdgeId);
+            if (edgeToDelete) {
+              setEdges((eds) => eds.filter((edge) => edge.id !== selectedEdgeId));
+              setSelectedEdgeId(null);
+              updateEdgeIndicesBetweenNodes(edgeToDelete.source as string, edgeToDelete.target as string);
+            }
           }
+          
         } else if (selectedNodeId) {
           // Existing node deletion logic
           const currentNodeIndex = nodes.findIndex((node) => node.id === selectedNodeId);

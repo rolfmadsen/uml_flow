@@ -1,5 +1,7 @@
 // src/app/CustomEdge.tsx
 
+'use client';
+
 import React, { useState } from 'react';
 import {
   EdgeProps,

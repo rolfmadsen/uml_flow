@@ -1,5 +1,7 @@
 // src/app/AddNodeButton.tsx
 
+'use client';
+
 import React from 'react';
 
 interface AddNodeButtonProps {

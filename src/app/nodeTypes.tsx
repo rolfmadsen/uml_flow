@@ -1,5 +1,7 @@
 // src/app/nodeTypes.ts
 
+'use client';
+
 import CustomUMLNode from './CustomUMLNode';
 
 const nodeTypes = {

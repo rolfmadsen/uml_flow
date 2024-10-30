@@ -1,5 +1,7 @@
 // src/app/edgeTypes.ts
 
+'use client';
+
 import CustomEdge from './CustomEdge';
 
 const edgeTypes = {
