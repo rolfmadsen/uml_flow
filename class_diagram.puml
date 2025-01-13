@@ -1,0 +1,156 @@
+@startuml UML Flow APPLICATION
+
+Title: UML Flow Application
+skinparam linetype ortho
+skinparam packageStyle rectangle
+hide empty members
+skinparam nodesep 60
+skinparam ranksep 60
+
+' Define Packages and Classes
+package "App" {
+    class RootLayout {
+        +render(): JSX.Element
+    }
+
+    class Home {
+        +render(): JSX.Element
+    }
+
+    class FlowCanvas {
+        -isInitialized: boolean
+        -nodes: CustomNode[]
+        -edges: CustomEdge[]
+        -selectedNodeId: string?
+        -selectedEdgeId: string?
+        -selectedSectionIndex: number
+        -reactFlowWrapper: HTMLDivElement
+        --
+        +handleAddNode()
+        +handleDeleteClass(nodeId: string)
+        +handleSelectSection(nodeId: string, sectionIndex: number)
+        +handleUpdateNodeData(nodeId: string, updatedData: NodeDataUpdate)
+        +updateEdgeLabel(edgeId: string, newLabel: string)
+        +updateRelationshipType(edgeId: string, newType: string)
+        +onConnect(params: Connection)
+        +saveDiagram()
+        +clearDiagram()
+        +updateEdgeIndicesBetweenNodes(sourceId: string, targetId: string)
+    }
+}
+
+package "Components" {
+    package "Nodes" {
+        class CustomUMLNode {
+            -isEditingClassName: boolean
+            -localClassName: string
+            -localAttributes: string[]
+            -localMethods: string[]
+            -classNameInputRef: HTMLInputElement
+            -attributeInputRefs: HTMLInputElement[]
+            -methodInputRefs: HTMLInputElement[]
+            --
+            +handleClassNameEdit(e: KeyboardEvent)
+            +handleAddAttribute(index: number)
+            +handleDeleteAttribute(index: number)
+            +handleAddMethod(index: number)
+            +handleDeleteMethod(index: number)
+        }
+
+        class nodeTypes {
+            +umlClass: CustomUMLNode
+        }
+    }
+
+    package "Edges" {
+        class CustomEdge {
+            -isEditing: boolean
+            -isSelected: boolean
+            --
+            +handleLabelClick()
+            +handleLabelBlur(newValue: string)
+            +handleLabelKeyDown(e: KeyboardEvent)
+        }
+
+        class edgeTypes {
+            +customEdge: CustomEdge
+        }
+    }
+
+    class AddNodeButton {
+        +onClick()
+    }
+}
+
+package "Types" {
+    class CustomNodeData <<interface>> {
+        +id: string
+        +className: string
+        +attributes: string[]
+        +methods: string[]
+        +selectedSection: number?
+        +onSelectSection(nodeId: string, sectionIndex: number)
+        +onDeleteClass(nodeId: string)
+        +onUpdateNodeData(nodeId: string, updatedData: NodeDataUpdate)
+    }
+
+    class CustomEdgeData <<interface>> {
+        +label: string?
+        +relationshipType: string?
+        +edgeIndex: number?
+        +totalEdges: number?
+        +updateEdgeLabel(edgeId: string, newLabel: string)
+        +updateRelationshipType(edgeId: string, newType: string)
+        +setSelectedEdge(edgeId: string?)
+    }
+
+    class NodeDataUpdate <<interface>> {
+        +className?: string
+        +attributes?: string[]
+        +methods?: string[]
+    }
+}
+
+' External Libraries
+class ReactFlow <<external>>
+class ReactFlowProvider <<external>>
+class useNodesState <<external>>
+class useEdgesState <<external>>
+class React <<external>>
+
+' Relationships
+
+' RootLayout contains Home
+RootLayout o-- Home : contains
+
+' Home renders FlowCanvas
+Home o-- FlowCanvas : renders
+
+' FlowCanvas uses ReactFlow and related hooks
+FlowCanvas .l.> ReactFlow : uses
+FlowCanvas .l.> ReactFlowProvider : uses
+FlowCanvas .l.> useNodesState : uses
+FlowCanvas .l.> useEdgesState : uses
+FlowCanvas .l.> React : uses
+
+' FlowCanvas compositions
+FlowCanvas o-- CustomUMLNode : renders
+FlowCanvas o-- CustomEdge : renders
+FlowCanvas o-- AddNodeButton : renders
+
+' FlowCanvas uses data interfaces
+FlowCanvas ..> CustomNodeData : uses
+FlowCanvas ..> CustomEdgeData : uses
+
+' CustomUMLNode uses data interfaces
+CustomUMLNode .> NodeDataUpdate : uses
+CustomUMLNode .> CustomNodeData : uses
+
+' CustomEdge uses data interface
+CustomEdge ..> CustomEdgeData : uses
+
+' nodeTypes and edgeTypes
+nodeTypes ..> CustomUMLNode : contains
+edgeTypes ..> CustomEdge : contains
+
+@enduml

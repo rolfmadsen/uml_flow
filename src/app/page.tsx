@@ -59,6 +59,129 @@ function FlowCanvas() {
 
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
 
+  const exportToPlantUML = () => {
+    const umlHeader = "@startuml\n";
+    const umlFooter = "@enduml\n";
+
+    // Generate PlantUML syntax for nodes (classes)
+    const nodeDeclarations = nodes.map((node) => {
+      const attributes = node.data.attributes.map((attr) => `  ${attr}`).join("\n");
+      const methods = node.data.methods.map((method) => `  ${method}`).join("\n");
+      return `class ${node.data.className} {\n${attributes}\n${methods}\n}`;
+    });
+
+    // Generate PlantUML syntax for edges (relationships)
+    const edgeDeclarations = edges.map((edge) => {
+      const source = nodes.find((n) => n.id === edge.source)?.data.className;
+      const target = nodes.find((n) => n.id === edge.target)?.data.className;
+
+      if (!source || !target) return "";
+
+      switch (edge.data.relationshipType) {
+        case "inheritance":
+          return `${source} <|-- ${target}`;
+        case "aggregation":
+          return `${source} o-- ${target}`;
+        case "composition":
+          return `${source} *-- ${target}`;
+        case "dependency":
+          return `${source} ..> ${target}`;
+        default:
+          return `${source} --> ${target}`; // Default to association
+      }
+    });
+
+    // Combine all parts
+    const plantUML = [
+      umlHeader,
+      ...nodeDeclarations,
+      ...edgeDeclarations.filter((line) => line.trim() !== ""), // Remove empty lines
+      umlFooter,
+    ].join("\n");
+
+    // Create a downloadable file
+    const blob = new Blob([plantUML], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "diagram.puml";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // New function to import PlantUML
+  const importFromPlantUML = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const text = e.target?.result as string;
+      const newNodes: CustomNode[] = [];
+      const newEdges: CustomEdge[] = [];
+
+      // Parse classes
+      const classRegex = /class\s+(\w+)\s*\{([\s\S]*?)\}/g;
+      let match;
+      while ((match = classRegex.exec(text)) !== null) {
+        const [, className, body] = match;
+        const attributes = body
+          .split("\n")
+          .filter((line) => line.trim() && !line.includes("()"))
+          .map((attr) => attr.trim());
+        const methods = body
+          .split("\n")
+          .filter((line) => line.trim() && line.includes("()"))
+          .map((method) => method.trim());
+
+        // ------------------------------
+        // ADD THESE CALLBACKS HERE
+        // ------------------------------
+        newNodes.push({
+          id: `${newNodes.length + 1}`,
+          type: "umlClass",
+          position: { x: Math.random() * 500, y: Math.random() * 500 }, // Random positions
+          data: {
+            id: `${newNodes.length + 1}`,
+            className,
+            attributes,
+            methods,
+            selectedSection: null,
+            onSelectSection: handleSelectSection,
+            onDeleteClass: handleDeleteClass,
+            onUpdateNodeData: handleUpdateNodeData,
+          },
+        });
+      }
+
+      // Parse relationships
+      const relationshipRegex = /(\w+)\s+([-\|<:o]+)\s+(\w+)/g;
+      while ((match = relationshipRegex.exec(text)) !== null) {
+        const [, sourceClass, relation, targetClass] = match;
+        const source = newNodes.find((node) => node.data.className === sourceClass)?.id;
+        const target = newNodes.find((node) => node.data.className === targetClass)?.id;
+
+        if (source && target) {
+          newEdges.push({
+            id: `edge-${source}-${target}`,
+            source,
+            target,
+            type: "customEdge",
+            data: {
+              label: relation.includes(":") ? relation.split(":")[1] : "Association",
+              relationshipType: relation.includes("o") ? "aggregation" : "association",
+            },
+          });
+        }
+      }
+
+      setNodes(newNodes);
+      setEdges(newEdges);
+    };
+    reader.readAsText(file);
+  };
+
   // New state variable to track initialization
   const [isInitialized, setIsInitialized] = useState(false);
 
@@ -82,9 +205,9 @@ function FlowCanvas() {
       );
     },
     [setEdges]
-);
+  );
 
-const updateRelationshipType = useCallback(
+  const updateRelationshipType = useCallback(
     (edgeId: string, newType: string) => {
       setEdges((eds) =>
         eds.map((edge) => {
@@ -103,7 +226,7 @@ const updateRelationshipType = useCallback(
       );
     },
     [setEdges]
-);
+  );
 
   const handleSelectSection = useCallback(
     (nodeId: string, section: number) => {
@@ -178,7 +301,7 @@ const updateRelationshipType = useCallback(
       edges: edgesToSave,
     };
     localStorage.setItem('diagram-flow', JSON.stringify(flow));
-}, [nodes, edges]); // Only nodes and edges should be dependencies
+  }, [nodes, edges]);
 
   // Load diagram from localStorage and reassign functions
   useEffect(() => {
@@ -211,7 +334,7 @@ const updateRelationshipType = useCallback(
               updateRelationshipType,
               setSelectedEdge: setSelectedEdgeId,
             },
-          }));          
+          }));
 
           setNodes(loadedNodes);
           setEdges(loadedEdges);
@@ -249,7 +372,6 @@ const updateRelationshipType = useCallback(
         setIsInitialized(true); // Mark initialization as complete
       }
     }
-    // Include the functions in the dependency array to ensure they are up to date
   }, [
     handleSelectSection,
     handleDeleteClass,
@@ -264,10 +386,10 @@ const updateRelationshipType = useCallback(
   // Save diagram whenever nodes or edges change, after initialization
   useEffect(() => {
     if (isInitialized) {
-        saveDiagram();
+      saveDiagram();
     }
   }, [isInitialized, nodes, edges, saveDiagram]);
-  
+
   // Clear diagram function
   const clearDiagram = useCallback(() => {
     localStorage.removeItem('diagram-flow');
@@ -278,59 +400,59 @@ const updateRelationshipType = useCallback(
   // Function to update edge indices between two nodes
   const updateEdgeIndicesBetweenNodes = useCallback(
     (sourceId: string, targetId: string) => {
-        setEdges((prevEdges) => {
-            // Identify edges connecting the same nodes
-            const sameEdges = prevEdges.filter(
-                (edge) =>
-                    (edge.source === sourceId && edge.target === targetId) ||
-                    (edge.source === targetId && edge.target === sourceId)
-            );
+      setEdges((prevEdges) => {
+        // Identify edges connecting the same nodes
+        const sameEdges = prevEdges.filter(
+          (edge) =>
+            (edge.source === sourceId && edge.target === targetId) ||
+            (edge.source === targetId && edge.target === sourceId)
+        );
 
-            return prevEdges.map((edge) => {
-                if (sameEdges.includes(edge)) {
-                    return {
-                        ...edge,
-                        data: {
-                            ...edge.data,
-                            edgeIndex: sameEdges.indexOf(edge), // Index within `sameEdges`
-                            totalEdges: sameEdges.length,
-                        },
-                    };
-                }
-                return edge;
-            });
+        return prevEdges.map((edge) => {
+          if (sameEdges.includes(edge)) {
+            return {
+              ...edge,
+              data: {
+                ...edge.data,
+                edgeIndex: sameEdges.indexOf(edge),
+                totalEdges: sameEdges.length,
+              },
+            };
+          }
+          return edge;
         });
+      });
     },
     [setEdges]
-);
+  );
 
-const onConnect = useCallback(
-  (params: Connection) => {
+  const onConnect = useCallback(
+    (params: Connection) => {
       if (!params.source || !params.target) return;
 
       const newEdge: CustomEdge = {
-          id: `edge-${params.source}-${params.sourceHandle}-${params.target}-${params.targetHandle}-${Date.now()}`,
-          type: 'customEdge',
-          source: params.source,
-          sourceHandle: params.sourceHandle, // Ensures handle ID is used
-          target: params.target,
-          targetHandle: params.targetHandle, // Ensures handle ID is used
-          data: {
-              label: 'Association',
-              relationshipType: 'association',
-              edgeIndex: 0,
-              totalEdges: 1,
-              updateEdgeLabel,
-              updateRelationshipType,
-              setSelectedEdge: setSelectedEdgeId,
-          },
+        id: `edge-${params.source}-${params.sourceHandle}-${params.target}-${params.targetHandle}-${Date.now()}`,
+        type: 'customEdge',
+        source: params.source,
+        sourceHandle: params.sourceHandle, 
+        target: params.target,
+        targetHandle: params.targetHandle,
+        data: {
+          label: 'Association',
+          relationshipType: 'association',
+          edgeIndex: 0,
+          totalEdges: 1,
+          updateEdgeLabel,
+          updateRelationshipType,
+          setSelectedEdge: setSelectedEdgeId,
+        },
       };
 
       setEdges((eds) => addEdge(newEdge, eds));
       updateEdgeIndicesBetweenNodes(params.source, params.target);
-  },
-  [setEdges, updateEdgeLabel, updateRelationshipType, updateEdgeIndicesBetweenNodes, setSelectedEdgeId]
-); 
+    },
+    [setEdges, updateEdgeLabel, updateRelationshipType, updateEdgeIndicesBetweenNodes, setSelectedEdgeId]
+  );
 
   const handleAddNode = useCallback(() => {
     if (!reactFlowWrapper.current) return;
@@ -363,7 +485,13 @@ const onConnect = useCallback(
     setSelectedNodeId(`${classCounter}`);
     setSelectedSectionIndex(0);
     classCounter++;
-  }, [project, setNodes, handleSelectSection, handleDeleteClass, handleUpdateNodeData]);
+  }, [
+    project,
+    setNodes,
+    handleSelectSection,
+    handleDeleteClass,
+    handleUpdateNodeData
+  ]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -378,14 +506,13 @@ const onConnect = useCallback(
               updateEdgeIndicesBetweenNodes(edgeToDelete.source as string, edgeToDelete.target as string);
             }
           }
-          
         } else if (selectedNodeId) {
           // Existing node deletion logic
           const currentNodeIndex = nodes.findIndex((node) => node.id === selectedNodeId);
           if (currentNodeIndex !== -1) {
             const currentNode = nodes[currentNodeIndex];
             const attributeCount = currentNode.data.attributes.length || 1;
-            
+
             if (selectedSectionIndex === 0 || selectedSectionIndex === 1) {
               handleDeleteClass(currentNode.id);
             } else {
@@ -497,9 +624,24 @@ const onConnect = useCallback(
           <AddNodeButton onClick={handleAddNode} />
         </ReactFlow>
       </div>
-      <button onClick={clearDiagram} style={{ position: 'absolute', top: 10, right: 10 }}>
+      <button
+        onClick={clearDiagram}
+        style={{ position: 'absolute', top: 10, right: 10 }}
+      >
         Clear Diagram
       </button>
+      <button
+        onClick={exportToPlantUML}
+        style={{ position: 'absolute', top: 50, right: 10 }}
+      >
+        Export to PlantUML
+      </button>
+      <input
+        type="file"
+        accept=".puml"
+        onChange={importFromPlantUML}
+        style={{ position: 'absolute', top: 90, right: 10 }}
+      />
     </>
   );
 }

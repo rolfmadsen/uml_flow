@@ -1,0 +1,25 @@
+@startuml
+
+class Person {
+  fornavn: String
+  mellemnavn: String
+  efternavn: String
+  personnummer: Int
+
+}
+class OrgPerson {
+  orgPersonNavn: String
+
+}
+class Organisation {
+  organisationsnavn: String
+
+}
+class University {
+  universityName String
+
+}
+Person aggregation OrgPerson
+Organisation aggregation OrgPerson
+University association Organisation
+@enduml
