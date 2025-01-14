@@ -62,22 +62,26 @@ function FlowCanvas() {
   const exportToPlantUML = () => {
     const umlHeader = "@startuml\n";
     const umlFooter = "@enduml\n";
-
+  
     // Generate PlantUML syntax for nodes (classes)
     const nodeDeclarations = nodes.map((node) => {
       const attributes = node.data.attributes.map((attr) => `  ${attr}`).join("\n");
       const methods = node.data.methods.map((method) => `  ${method}`).join("\n");
       return `class ${node.data.className} {\n${attributes}\n${methods}\n}`;
     });
-
+  
     // Generate PlantUML syntax for edges (relationships)
     const edgeDeclarations = edges.map((edge) => {
       const source = nodes.find((n) => n.id === edge.source)?.data.className;
       const target = nodes.find((n) => n.id === edge.target)?.data.className;
-
+  
+      // If we can't find source or target class name, skip
       if (!source || !target) return "";
-
-      switch (edge.data.relationshipType) {
+  
+      // Safely handle the relationshipType
+      const relationshipType = edge.data?.relationshipType || "association";
+  
+      switch (relationshipType) {
         case "inheritance":
           return `${source} <|-- ${target}`;
         case "aggregation":
@@ -87,18 +91,19 @@ function FlowCanvas() {
         case "dependency":
           return `${source} ..> ${target}`;
         default:
-          return `${source} --> ${target}`; // Default to association
+          // Default to association
+          return `${source} --> ${target}`;
       }
     });
-
+  
     // Combine all parts
     const plantUML = [
       umlHeader,
       ...nodeDeclarations,
-      ...edgeDeclarations.filter((line) => line.trim() !== ""), // Remove empty lines
+      ...edgeDeclarations.filter((line) => line.trim() !== ""),
       umlFooter,
     ].join("\n");
-
+  
     // Create a downloadable file
     const blob = new Blob([plantUML], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
