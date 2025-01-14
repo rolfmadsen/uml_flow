@@ -35,17 +35,18 @@ const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) =
     onUpdateNodeData,
   } = data;
 
-  // State and refs
+  // Local state
   const [isEditingClassName, setIsEditingClassName] = useState(false);
   const [localClassName, setLocalClassName] = useState(className);
   const [localAttributes, setLocalAttributes] = useState(attributes);
   const [localMethods, setLocalMethods] = useState(methods);
 
+  // Refs for focusing
   const classNameInputRef = useRef<HTMLInputElement>(null);
   const attributeInputRefs = useRef<HTMLInputElement[]>([]);
   const methodInputRefs = useRef<HTMLInputElement[]>([]);
 
-  // Effect to synchronize data back to parent
+  // Sync changes back up
   useEffect(() => {
     onUpdateNodeData(id, {
       className: localClassName,
@@ -54,24 +55,25 @@ const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) =
     });
   }, [localClassName, localAttributes, localMethods, id, onUpdateNodeData]);
 
-  // Focus management
+  // Focus management for class name
   useEffect(() => {
     if (isEditingClassName && classNameInputRef.current) {
       classNameInputRef.current.focus();
     }
   }, [isEditingClassName]);
 
+  // Auto-focus on sections
   useEffect(() => {
     if (selectedSection !== null) {
       let sectionIdx = 0;
       if (selectedSection === sectionIdx) {
-        // Class Frame selected, do nothing
+        // Class frame selected
       } else if (selectedSection === ++sectionIdx) {
         // Class Name selected
         setIsEditingClassName(true);
         setTimeout(() => classNameInputRef.current?.focus(), 0);
       } else {
-        // Attributes and Methods
+        // Attributes & Methods
         const attrCount = localAttributes.length || 1;
         const methodCount = localMethods.length || 1;
         if (selectedSection <= sectionIdx + attrCount) {
@@ -85,10 +87,8 @@ const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) =
     }
   }, [selectedSection, localAttributes.length, localMethods.length]);
 
-  // Helper function
+  // Helpers
   const isSelected = (sectionIdx: number) => selectedSection === sectionIdx;
-
-  // Declare sectionIndex before using it
   let sectionIndex = 0;
 
   return (
@@ -223,67 +223,43 @@ const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) =
         )}
       </div>
 
-      {/* Handles */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        id="top-target"
-        style={{ left: '50%' }}
-        isConnectable={isConnectable}
-      />
+      {/*
+        Instead of multiple handles on each side, define hidden handles
+        to satisfy TS requirements. We set position={Position.Left} (or
+        any enum) but override via style so it appears centered & invisible.
+      */}
       <Handle
         type="source"
-        position={Position.Top}
-        id="top-source"
-        style={{ left: '50%' }}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="target"
-        position={Position.Right}
-        id="right-target"
-        style={{ top: '50%' }}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="source"
-        position={Position.Right}
-        id="right-source"
-        style={{ top: '50%' }}
+        position={Position.Left} // TS wants a required 'position'
+        style={{
+          width: 0,
+          height: 0,
+          border: 'none',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
         isConnectable={isConnectable}
       />
       <Handle
         type="target"
-        position={Position.Bottom}
-        id="bottom-target"
-        style={{ left: '50%' }}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom-source"
-        style={{ left: '50%' }}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="target"
-        position={Position.Left}
-        id="left-target"
-        style={{ top: '50%' }}
-        isConnectable={isConnectable}
-      />
-      <Handle
-        type="source"
-        position={Position.Left}
-        id="left-source"
-        style={{ top: '50%' }}
+        position={Position.Left} // same trick
+        style={{
+          width: 0,
+          height: 0,
+          border: 'none',
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+        }}
         isConnectable={isConnectable}
       />
     </div>
   );
 
+  // -------------------------------------------
   // Event handlers
+  // -------------------------------------------
   function handleClassNameEdit(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter') {
       setIsEditingClassName(false);
@@ -302,16 +278,22 @@ const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) =
       index += 1;
     }
     setLocalAttributes(updatedAttributes);
+
+    // Focus the newly added attribute
     setTimeout(() => {
       attributeInputRefs.current[index]?.focus();
-      onSelectSection(id, selectedSection! + 1);
+      if (selectedSection !== null) {
+        onSelectSection(id, selectedSection + 1);
+      }
     }, 0);
   }
 
   function handleDeleteAttribute(index: number) {
     const updatedAttributes = localAttributes.filter((_, idx) => idx !== index);
     setLocalAttributes(updatedAttributes);
-    onSelectSection(id, selectedSection! - 1);
+    if (selectedSection !== null) {
+      onSelectSection(id, selectedSection - 1);
+    }
   }
 
   function handleAddMethod(index: number) {
@@ -324,16 +306,22 @@ const CustomUMLNode = ({ data, id, isConnectable }: NodeProps<CustomNodeData>) =
       index += 1;
     }
     setLocalMethods(updatedMethods);
+
+    // Focus the newly added method
     setTimeout(() => {
       methodInputRefs.current[index]?.focus();
-      onSelectSection(id, selectedSection! + 1);
+      if (selectedSection !== null) {
+        onSelectSection(id, selectedSection + 1);
+      }
     }, 0);
   }
 
   function handleDeleteMethod(index: number) {
     const updatedMethods = localMethods.filter((_, idx) => idx !== index);
     setLocalMethods(updatedMethods);
-    onSelectSection(id, selectedSection! - 1);
+    if (selectedSection !== null) {
+      onSelectSection(id, selectedSection - 1);
+    }
   }
 };
 

@@ -30,7 +30,7 @@ class Uddannelse {
   uddannelsesnavn
 
 }
-class ClassSeven {
+class Class 7 {
   attribute: Type
   method(): ReturnType
 }
@@ -39,5 +39,5 @@ Organisation o-- OrgPerson
 Adresse --> University
 University --> Organisation
 University --> Uddannelse
-Adresse --> Class7
+Adresse --> Class 7
 @enduml

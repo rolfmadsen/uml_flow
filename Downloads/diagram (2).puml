@@ -26,18 +26,8 @@ class University {
   universityName String
 
 }
-class Uddannelse {
-  uddannelsesnavn
-
-}
-class ClassSeven {
-  attribute: Type
-  method(): ReturnType
-}
 Person o-- OrgPerson
 Organisation o-- OrgPerson
 Adresse --> University
 University --> Organisation
-University --> Uddannelse
-Adresse --> Class7
 @enduml
